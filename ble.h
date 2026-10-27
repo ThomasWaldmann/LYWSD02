@@ -18,6 +18,7 @@
 #define BLE_H_
 
 #include <stddef.h>
+#include <time.h>
 
 // Integer error codes that can be returned from most of these ble API functions.
 #define BLE_ERROR_NONE              0 // Success
@@ -50,6 +51,8 @@ int bleGetDeviceId(int index, char* pBuffer, size_t bufferSize);
 int bleConnect(int index);
 int bleDisconnect();
 int bleSetToCurrentTime();
+// Set the device to the given time (local timezone).
+int bleSetTime(time_t t);
 int bleSetToCelsius();
 int bleSetToFahrenheit();
 

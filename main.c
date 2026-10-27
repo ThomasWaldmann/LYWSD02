@@ -15,6 +15,7 @@
 */
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "ble.h"
 
 
@@ -26,8 +27,9 @@
 static void displayUsage(void)
 {
     printf("\n"
-           "Usage: LYWSD02 [Celsius | C | Fahrenheit | F]\n"
+           "Usage: LYWSD02 [--test] [Celsius | C | Fahrenheit | F]\n"
            "Where:\n"
+           "  --test sets the time to 12:34 (today) instead of the current local time.\n"
            "  Celsius or C sets temperature display to be in Celsius.\n"
            "  Fahrenheit or F sets temperature display to be in Fahrenheit.\n"
            "\n"
@@ -52,6 +54,7 @@ typedef enum TemperatureUnits
 typedef struct CommandLineParams
 {
     TemperatureUnits tempUnits;
+    int              test;
 } CommandLineParams;
 
 static CommandLineParams g_params;
@@ -83,6 +86,7 @@ static int parseCommandLine(CommandLineParams* pParams, int argc, char** ppArgs)
     int result = 0;
 
     pParams->tempUnits = NONE;
+    pParams->test = 0;
 
     // Skip executable name.
     ppArgs++;
@@ -97,6 +101,10 @@ static int parseCommandLine(CommandLineParams* pParams, int argc, char** ppArgs)
         else if (0 == strcasecmp(pArg, "fahrenheit") || 0 == strcasecmp(pArg, "f"))
         {
             pParams->tempUnits = FAHRENHEIT;
+        }
+        else if (0 == strcmp(pArg, "--test"))
+        {
+            pParams->test = 1;
         }
         else
         {
@@ -114,6 +122,20 @@ static int parseCommandLine(CommandLineParams* pParams, int argc, char** ppArgs)
 
 
 static void updateDevice(int index);
+
+// Returns today's 12:34:00 local time, used by the --test option.
+static time_t testTime(void)
+{
+    time_t    now = time(NULL);
+    struct tm local;
+
+    localtime_r(&now, &local);
+    local.tm_hour = 12;
+    local.tm_min = 34;
+    local.tm_sec = 0;
+    local.tm_isdst = -1;
+    return mktime(&local);
+}
 
 void workerMain(void)
 {
@@ -152,8 +174,16 @@ static void updateDevice(int index)
     }
     printf("LYWSD02 device connected!\n");
 
-    printf("Updating time...\n");
-    result = bleSetToCurrentTime();
+    if (g_params.test)
+    {
+        printf("Setting time to 12:34 (test mode)...\n");
+        result = bleSetTime(testTime());
+    }
+    else
+    {
+        printf("Updating time...\n");
+        result = bleSetToCurrentTime();
+    }
     if (result == BLE_ERROR_NOT_CONNECTED)
     {
         printf("BLE connection lost!\n");

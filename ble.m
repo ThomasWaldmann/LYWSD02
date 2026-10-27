@@ -547,14 +547,16 @@ int bleDisconnect()
 
 int bleSetToCurrentTime()
 {
-    struct timeval  time;
-    struct timezone zone;
+    return bleSetTime(time(NULL));
+}
+
+int bleSetTime(time_t t)
+{
     struct tm       local;
 
-    gettimeofday(&time, &zone);
-    localtime_r(&time.tv_sec, &local);
+    localtime_r(&t, &local);
 
-    int32_t seconds = time.tv_sec;
+    int32_t seconds = t;
     int32_t timeZone = local.tm_gmtoff / (60 * 60);
     uint8_t packetData[5];
     packetData[0] = seconds;
