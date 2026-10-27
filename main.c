@@ -18,6 +18,10 @@
 #include "ble.h"
 
 
+// How long to scan for LYWSD02 devices before setting the time on all of the devices found.
+#define SCAN_SECONDS 10
+
+
 
 static void displayUsage(void)
 {
@@ -27,8 +31,9 @@ static void displayUsage(void)
            "  Celsius or C sets temperature display to be in Celsius.\n"
            "  Fahrenheit or F sets temperature display to be in Fahrenheit.\n"
            "\n"
-           "  The device's time will always be updated to match the current local time\n"
-           "  even if temperature setting is left blank.\n");
+           "  The time of all LYWSD02 devices found within %d seconds of scanning will\n"
+           "  always be updated to match the current local time even if temperature\n"
+           "  setting is left blank.\n", SCAN_SECONDS);
 }
 
 
@@ -108,15 +113,41 @@ static int parseCommandLine(CommandLineParams* pParams, int argc, char** ppArgs)
 
 
 
+static void updateDevice(int index);
+
 void workerMain(void)
 {
-    int result = -1;
+    int count;
+    int i;
 
-    printf("Attempting to connect to LYWSD02 device...\n");
-    result = bleConnect(NULL);
+    printf("Scanning for LYWSD02 devices for %d seconds...\n", SCAN_SECONDS);
+    count = bleScan(SCAN_SECONDS);
+    if (count == 0)
+    {
+        fprintf(stderr, "error: No LYWSD02 device found.\n");
+        return;
+    }
+    printf("Found %d LYWSD02 device(s).\n", count);
+
+    for (i = 0 ; i < count ; i++)
+    {
+        updateDevice(i);
+    }
+}
+
+static void updateDevice(int index)
+{
+    int result = -1;
+    char deviceId[64];
+
+    if (bleGetDeviceId(index, deviceId, sizeof(deviceId)))
+        strcpy(deviceId, "?");
+
+    printf("Attempting to connect to LYWSD02 device %s...\n", deviceId);
+    result = bleConnect(index);
     if (result)
     {
-        fprintf(stderr, "error: Failed to connect to LYWSD02 device.\n");
+        fprintf(stderr, "error: Failed to connect to LYWSD02 device %s.\n", deviceId);
         goto Error;
     }
     printf("LYWSD02 device connected!\n");
